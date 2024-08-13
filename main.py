@@ -177,11 +177,14 @@ print("\n", "="*30, f"NEW EXP: ASQP on {args.dataset}", "="*30, "\n")
 tokenizer = T5Tokenizer.from_pretrained(args.model_name_or_path)
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 print(f"Here is an example (from the dev set):")
-train_dataset = ABSADataset(tokenizer=tokenizer, data_dir=args.dataset, 
+dev_dataset = ABSADataset(tokenizer=tokenizer, data_dir=args.dataset, 
                       data_type='dev', max_len=args.max_seq_length)
-data_sample = train_dataset[7]  # a random data sample
+data_sample = dev_dataset[7]  # a random data sample
 print('Input :', tokenizer.decode(data_sample['source_ids'], skip_special_tokens=True))
 print('Output:', tokenizer.decode(data_sample['target_ids'], skip_special_tokens=True))
+
+train_dataset = ABSADataset(tokenizer=tokenizer, data_dir=args.dataset, 
+                      data_type='train', max_len=args.max_seq_length)
 
 
 # training process

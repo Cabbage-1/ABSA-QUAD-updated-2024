@@ -1,9 +1,9 @@
 python main.py --task asqp \
-            --dataset rest16 \
+            --dataset rest15 \
             --model_name_or_path t5-base \
             --n_gpu 0 \
             --do_train \
-            --do_inference \
+            --do_direct_eval \
             --train_batch_size 16 \
             --gradient_accumulation_steps 1 \
             --eval_batch_size 16 \
