@@ -1,4 +1,4 @@
-# Aspect Sentiment Quad Prediction (ASQP)
+# Aspect Sentiment Quad Prediction (ASQP) [Updated in August 2024]
 
 This repo contains the annotated data and code for our paper [Aspect Sentiment Quad Prediction as Paraphrase Generation](https://aclanthology.org/2021.emnlp-main.726.pdf) in EMNLP 2021.
 
@@ -13,7 +13,7 @@ This repo contains the annotated data and code for our paper [Aspect Sentiment Q
 - You can also access the ABSA triplet data from the repo [Generative-ABSA](https://github.com/IsakZhang/Generative-ABSA).
 
 
-## Requirements [Updated 2024]
+## Requirements [Updated in August 2024]
 
 We highly recommend you to install the specified version of the following packages to avoid unnecessary troubles:
 
