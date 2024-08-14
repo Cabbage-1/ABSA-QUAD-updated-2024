@@ -17,6 +17,9 @@ from data_utils import ABSADataset
 from data_utils import read_line_examples_from_file
 from eval_utils import compute_scores
 
+import logging
+import os
+
 
 logger = logging.getLogger(__name__)
 
@@ -161,10 +164,31 @@ def evaluate(data_loader, model, sents, device):
             targets.extend(target)
 
     scores, all_labels, all_preds = compute_scores(outputs, targets, sents)
-    scores["all_labels"] = all_labels
-    scores["all_preds"] = all_preds
 
     return scores
+
+
+class LoggingCallback:
+    def __init__(self, output_dir):
+        self.output_dir = output_dir
+        logging.basicConfig(level=logging.INFO)
+        self.logger = logging.getLogger(__name__)
+
+    def on_validation_end(self, val_loss, epoch):
+        self.logger.info(f"***** Validation results after epoch {epoch} *****")
+        self.logger.info(f"Validation Loss: {val_loss:.4f}")
+
+    def on_test_end(self, metrics):
+        self.logger.info("***** Test results *****")
+        
+        output_test_results_file = os.path.join(self.output_dir, "test_results.txt")
+        with open(output_test_results_file, "w") as writer:
+            for key in sorted(metrics):
+                if key not in ["log", "progress_bar"]:
+                    self.logger.info(f"{key} = {metrics[key]}")
+                    writer.write(f"{key} = {metrics[key]}\n")
+
+
 
 
 
@@ -187,6 +211,9 @@ train_dataset = ABSADataset(tokenizer=tokenizer, data_dir=args.dataset,
                       data_type='train', max_len=args.max_seq_length)
 
 
+# Initialization of the LoggingCallback
+logging_callback = LoggingCallback(args.output_dir)
+
 # training process
 if args.do_train:
     print("\n****** Conduct Training ******")
@@ -198,12 +225,7 @@ if args.do_train:
     train_loader = DataLoader(train_dataset, batch_size=args.train_batch_size,
                                   drop_last=True, shuffle=True, num_workers=4)
 
-    # checkpoint_callback = pl.callbacks.ModelCheckpoint(
-    #     filepath=args.output_dir, prefix="ckt", monitor='val_loss', mode='min', save_top_k=3
-    # )
-
     optimizer = AdamW(model.parameters(), lr=args.learning_rate, eps=args.adam_epsilon)
-    print(1, args.n_gpu)
     t_total = (len(train_loader.dataset) // (args.train_batch_size * max(1, int(args.n_gpu)))) // args.gradient_accumulation_steps * float(args.num_train_epochs)
     scheduler = get_linear_schedule_with_warmup(optimizer, num_warmup_steps=args.warmup_steps, num_training_steps=t_total)
 
@@ -216,6 +238,8 @@ if args.do_train:
         val_loss = validate_model(model, val_loader, device)
         print(f"Epoch {epoch+1}/{args.num_train_epochs}, Validation Loss: {val_loss:.4f}")
 
+        # Log validation results
+        logging_callback.on_validation_end(val_loss, epoch+1)
 
     # save the final model
     model.model.save_pretrained(args.output_dir)
@@ -228,21 +252,17 @@ if args.do_train:
 if args.do_direct_eval:
     print("\n****** Conduct Evaluating with the last state ******")
 
-    # model = T5FineTuner(args)
-
-    # print("Reload the model")
-    # model.model.from_pretrained(args.output_dir)
-
     sents, _ = read_line_examples_from_file(f'data/{args.dataset}/test.txt')
-
 
     test_dataset = ABSADataset(tokenizer, data_dir=args.dataset, 
                                data_type='test', max_len=args.max_seq_length)
     test_loader = DataLoader(test_dataset, batch_size=32, num_workers=4)
-    # print(test_loader.device)
 
     # compute the performance scores
     scores = evaluate(test_loader, model, sents, device)
+
+    # Log test results
+    logging_callback.on_test_end(scores)
 
     # write to file
     log_file_path = f"results_log/{args.dataset}.txt"
