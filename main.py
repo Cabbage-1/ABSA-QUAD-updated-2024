@@ -16,6 +16,7 @@ from transformers import T5ForConditionalGeneration, T5Tokenizer, get_linear_sch
 from data_utils import ABSADataset
 from data_utils import read_line_examples_from_file
 from eval_utils import compute_scores
+from custom_collate_fn import DependencyTreeCollate
 
 import logging
 import os
@@ -23,7 +24,7 @@ import os
 
 logger = logging.getLogger(__name__)
 
-
+collate_fn = DependencyTreeCollate(stanford_url="http://localhost:9000")
 def init_args():
     parser = argparse.ArgumentParser()
     # basic settings
@@ -162,6 +163,17 @@ def evaluate(data_loader, model, sents, device):
 
             outputs.extend(dec)
             targets.extend(target)
+            # 打印部分生成内容（例如前5个样本）
+            # if len(outputs) >= 5:
+            #     print("\nPrint some results to check the sanity of generation method:", '\n', '-'*30)
+            #     for i in range(5):
+            #         try:
+            #             print(f'>>Target    : {targets[i]}')
+            #             print(f'>>Generation: {outputs[i]}')
+            #             print()
+            #         except UnicodeEncodeError:
+            #             print('Unable to print due to the coding error')
+            #     break  # 只打印一次，避免过多输出
 
     scores, all_labels, all_preds = compute_scores(outputs, targets, sents)
 
@@ -187,8 +199,6 @@ class LoggingCallback:
                 if key not in ["log", "progress_bar"]:
                     self.logger.info(f"{key} = {metrics[key]}")
                     writer.write(f"{key} = {metrics[key]}\n")
-
-
 
 
 
@@ -223,7 +233,7 @@ if args.do_train:
     model = model.to(device)
 
     train_loader = DataLoader(train_dataset, batch_size=args.train_batch_size,
-                                  drop_last=True, shuffle=True, num_workers=4)
+                                  drop_last=True, shuffle=True, num_workers=4, collate_fn=collate_fn)
 
     optimizer = AdamW(model.parameters(), lr=args.learning_rate, eps=args.adam_epsilon)
     t_total = (len(train_loader.dataset) // (args.train_batch_size * max(1, int(args.n_gpu)))) // args.gradient_accumulation_steps * float(args.num_train_epochs)
@@ -256,7 +266,7 @@ if args.do_direct_eval:
 
     test_dataset = ABSADataset(tokenizer, data_dir=args.dataset, 
                                data_type='test', max_len=args.max_seq_length)
-    test_loader = DataLoader(test_dataset, batch_size=32, num_workers=4)
+    test_loader = DataLoader(test_dataset, batch_size=32, num_workers=4, collate_fn=collate_fn)
 
     # compute the performance scores
     scores = evaluate(test_loader, model, sents, device)
@@ -296,7 +306,7 @@ if args.do_inference:
 
     test_dataset = ABSADataset(tokenizer, data_dir=args.dataset, 
                                data_type='test', max_len=args.max_seq_length)
-    test_loader = DataLoader(test_dataset, batch_size=32, num_workers=4)
+    test_loader = DataLoader(test_dataset, batch_size=32, num_workers=4, collate_fn=collate_fn)
     # print(test_loader.device)
 
     # compute the performance scores

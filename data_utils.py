@@ -141,9 +141,11 @@ class ABSADataset(Dataset):
         self.max_len = max_len
         self.tokenizer = tokenizer
         self.data_dir = data_dir
+        self.print_flag = True  # 用于控制是否打印数据
 
         self.inputs = []
         self.targets = []
+        self.sentences = []  # 用于存储句子信息
 
         self._build_examples()
 
@@ -157,8 +159,20 @@ class ABSADataset(Dataset):
         src_mask = self.inputs[index]["attention_mask"].squeeze()  # might need to squeeze
         target_mask = self.targets[index]["attention_mask"].squeeze()  # might need to squeeze
 
+        # 返回句子信息
+        sentence = self.sentences[index]
+        # if self.print_flag:
+        #     print("sentence:",sentence)
+        #     print("source_ids:",source_ids)
+        #     print("src_mask:",src_mask)
+        #     print("target_ids:",target_ids)
+        #     print("target_mask:",target_mask)
+        #     self.print_flag = False  # 打印后关闭标志
+
         return {"source_ids": source_ids, "source_mask": src_mask, 
-                "target_ids": target_ids, "target_mask": target_mask}
+                "target_ids": target_ids, "target_mask": target_mask,
+                "sentence": sentence}
+        # 添加句子信息
 
     def _build_examples(self):
 
@@ -180,3 +194,4 @@ class ABSADataset(Dataset):
 
             self.inputs.append(tokenized_input)
             self.targets.append(tokenized_target)
+            self.sentences.append(input)  # 确保 sentences 列表已初始化
