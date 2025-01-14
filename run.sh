@@ -1,5 +1,5 @@
 python main.py --task asqp \
-            --dataset rest16 \
+            --dataset rest15 \
             --model_name_or_path t5-base \
             --n_gpu 0 \
             --do_train \

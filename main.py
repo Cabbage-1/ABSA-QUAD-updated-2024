@@ -5,6 +5,8 @@ import os
 import logging
 import time
 import pickle
+import random
+import numpy as np
 from tqdm import tqdm
 
 import torch
@@ -55,7 +57,7 @@ def init_args():
     parser.add_argument("--learning_rate", default=3e-4, type=float)
     parser.add_argument("--num_train_epochs", default=30, type=int, 
                         help="Total number of training epochs to perform.")
-    parser.add_argument('--seed', type=int, default=42,
+    parser.add_argument('--seed', type=int, default=2,
                         help="random seed for initialization")
 
     # training details
@@ -204,6 +206,9 @@ class LoggingCallback:
 
 # initialization
 args = init_args()
+random.seed(args.seed)
+np.random.seed(args.seed)
+torch.manual_seed(args.seed)
 print("\n", "="*30, f"NEW EXP: ASQP on {args.dataset}", "="*30, "\n")
 
 # sanity check
@@ -244,7 +249,7 @@ if args.do_train:
         print(f"Epoch {epoch+1}/{args.num_train_epochs}, Training Loss: {train_loss:.4f}")
 
         val_dataset = get_dataset(tokenizer, "test", args)
-        val_loader = DataLoader(val_dataset, batch_size=args.eval_batch_size, num_workers=4)
+        val_loader = DataLoader(val_dataset, batch_size=args.eval_batch_size, num_workers=4, collate_fn=collate_fn)
         val_loss = validate_model(model, val_loader, device)
         print(f"Epoch {epoch+1}/{args.num_train_epochs}, Validation Loss: {val_loss:.4f}")
 
@@ -278,8 +283,8 @@ if args.do_direct_eval:
     log_file_path = f"results_log/{args.dataset}.txt"
     local_time = time.asctime(time.localtime(time.time()))
 
-    exp_settings = f"Datset={args.dataset}; Train bs={args.train_batch_size}, num_epochs = {args.num_train_epochs}"
-    exp_results = f"F1 = {scores['f1']:.4f}"
+    exp_settings = f"Datset={args.dataset}; Train bs={args.train_batch_size}, num_epochs = {args.num_train_epochs}, num_epochs = {args.num_train_epochs},seed = {args.seed}"
+    exp_results = f"F1 = {scores['f1']:.4f}, precision = {scores['precision']:.4f}, recall = {scores['recall']:.4f}"
 
     log_str = f'============================================================\n'
     log_str += f"{local_time}\n{exp_settings}\n{exp_results}\n\n"
@@ -316,8 +321,8 @@ if args.do_inference:
     log_file_path = f"results_log/{args.dataset}.txt"
     local_time = time.asctime(time.localtime(time.time()))
 
-    exp_settings = f"Datset={args.dataset}; Train bs={args.train_batch_size}, num_epochs = {args.num_train_epochs}"
-    exp_results = f"F1 = {scores['f1']:.4f}"
+    exp_settings = f"Datset={args.dataset}; Train bs={args.train_batch_size}, num_epochs = {args.num_train_epochs},seed = {args.seed}"
+    exp_results = f"F1 = {scores['f1']:.4f}, precision = {scores['precision']:.4f}, recall = {scores['recall']:.4f}"
 
     log_str = f'============================================================\n'
     log_str += f"{local_time}\n{exp_settings}\n{exp_results}\n\n"
