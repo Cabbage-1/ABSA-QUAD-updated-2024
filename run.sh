@@ -1,11 +1,11 @@
 python main.py --task asqp \
-            --dataset rest15 \
+            --dataset laptop-acos \
             --model_name_or_path t5-base \
             --n_gpu 0 \
             --do_train \
             --do_direct_eval \
-            --train_batch_size 16 \
+            --train_batch_size 32 \
             --gradient_accumulation_steps 1 \
-            --eval_batch_size 16 \
+            --eval_batch_size 32 \
             --learning_rate 3e-4 \
             --num_train_epochs 20

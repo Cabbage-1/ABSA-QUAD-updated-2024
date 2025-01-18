@@ -3,7 +3,7 @@
 # This script handles the decoding functions and performance measurement
 
 import re
-from data_utils import aspect_cate_list
+# from data_utils import aspect_cate_list
 
 sentiment_word_list = ['positive', 'negative', 'neutral']
 opinion2word = {'great': 'positive', 'bad': 'negative', 'ok': 'neutral'}
