@@ -45,8 +45,12 @@ class DependencyTreeCollate:
         ) as client:
             sentences = [item["sentence"] for item in batch]
             dependency_trees = []
-
-            for sentence in sentences:
+            # for sentence in sentences:
+            for sentenceyuanshi in sentences:
+                # 查找 "Sentiment:" 的位置
+                sentiment_index = sentenceyuanshi.find("Sentiment:")
+                # 截取 "Sentiment:" 前面的部分
+                sentence = sentenceyuanshi[:sentiment_index].strip()
                 try:
                     ann = client.annotate(sentence)
                     if len(ann.sentence) > 0 and hasattr(ann.sentence[0], 'token'):
