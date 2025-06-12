@@ -62,7 +62,6 @@ class DependencyTreeCollate:
                 except Exception as e:
                     print(f"Error processing sentence: {sentence}, {e}")
                     dependency_trees.append(torch.zeros((self.max_len, self.max_len), dtype=torch.float32))
-
             return dependency_trees
 
     def _convert_dependency_to_matrix(self, tokens):
@@ -148,7 +147,7 @@ class DependencyTreeCollate:
 #                     # print(f"Processed sentence: {sentence}")
 #                     # print("-ann"*30)
 #                     # print(f"Annotation result: {ann}")
-                
+
 #                     # 检查是否成功生成依存关系
 #                     if len(ann.sentence) > 0 and hasattr(ann.sentence[0], 'token'):
 #                         dep_tree = self._convert_dependency_to_matrix(ann.sentence[0].token)

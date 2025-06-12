@@ -17,6 +17,7 @@ from data_utils import ABSADataset
 from data_utils import read_line_examples_from_file
 from eval_utils import compute_scores
 from custom_collate_fn import DependencyTreeCollate
+import language_tool_python
 
 import logging
 import os
@@ -156,6 +157,8 @@ def validate_model(model, val_loader, device):
 def evaluate(data_loader, model, sents, device):
     model.eval()
     outputs, targets = [], []
+    # Initialize LanguageTool for grammar checking
+    tool = language_tool_python.LanguageTool('en-US')
 
     with torch.no_grad():
         for batch in tqdm(data_loader, desc="Evaluating"):
@@ -166,6 +169,12 @@ def evaluate(data_loader, model, sents, device):
             dec = [model.tokenizer.decode(ids, skip_special_tokens=True) for ids in outs]
             target = [model.tokenizer.decode(ids, skip_special_tokens=True) for ids in batch["target_ids"]]
 
+            # Apply grammar check on the generated outputs
+            # corrected_dec = []
+            # for text in dec:
+            #     matches = tool.check(text)  # Check the grammar of the generated text
+            #     corrected_text = language_tool_python.utils.correct(text, matches)  # Correct the text
+            #     corrected_dec.append(corrected_text)
             outputs.extend(dec)
             targets.extend(target)
             # 打印部分生成内容（例如前5个样本）

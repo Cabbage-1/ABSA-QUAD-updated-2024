@@ -1,10 +1,13 @@
 import nltk
+import torch
 from nltk import pos_tag
 from nltk.tokenize import word_tokenize
 from nltk.corpus import stopwords
 from sentence_transformers import SentenceTransformer
 from sklearn.metrics.pairwise import cosine_similarity
+from sklearn.decomposition import PCA
 import numpy as np
+from torch import nn
 
 # 下载NLTK的必要资源
 nltk.download('punkt')
@@ -13,6 +16,7 @@ nltk.download('averaged_perceptron_tagger_eng')
 
 # 加载预训练的句子嵌入模型
 model = SentenceTransformer('all-MiniLM-L6-v2')  # 轻量级且高效的模型
+# model = SentenceTransformer('all-MiniLM-L12-v2')  # 精度更高的模型
 
 def load_sentiwordnet(file_path):
     sentiwordnet = {}
@@ -91,30 +95,127 @@ def extract_adjectives(text):
     tagged_words = pos_tag(filtered_words)
 
     # 只保留形容词（JJ、JJR、JJS为形容词的标记）
-    adjectives = [word for word, tag in tagged_words if tag in ['JJ', 'JJR', 'JJS', 'RB', 'RBR', 'RBS']]
+    adjectives = [word for word, tag in tagged_words if tag in ['JJ', 'JJR', 'JJS', 'VB', 'VBD', 'VBG', 'VBN', 'VBP', 'VBZ','RB', 'RBR', 'RBS']]
 
     return adjectives
 
+class SentimentAnalyzer(nn.Module):
+    def __init__(self, embedding_dim):
+        super(SentimentAnalyzer, self).__init__()
+        self.attention = nn.Linear(embedding_dim, 1)
 
+    def forward(self, context_embedding, gloss_embeddings):
+        # context_embedding: (1, embedding_dim)
+        # gloss_embeddings: (num_glosses, embedding_dim)
+        scores = self.attention(gloss_embeddings)  # (num_glosses, 1)
+        weights = torch.softmax(scores, dim=0)  # (num_glosses, 1)
+        return weights
+
+# 初始化模型
+sentiment_analyzer = SentimentAnalyzer(embedding_dim=384)
+
+from sklearn.metrics.pairwise import cosine_similarity
+import numpy as np
+from sklearn.preprocessing import normalize
+
+# class SentimentAnalyzer(nn.Module):
+#     def __init__(self, embedding_dim):
+#         super(SentimentAnalyzer, self).__init__()
+#         self.attention = nn.Linear(embedding_dim, 1)
+#
+#     def forward(self, context_embedding, gloss_embeddings):
+#         # context_embedding: (1, embedding_dim)
+#         # gloss_embeddings: (num_glosses, embedding_dim)
+#         scores = self.attention(gloss_embeddings)  # (num_glosses, 1)
+#         weights = torch.softmax(scores, dim=0)  # (num_glosses, 1)
+#         return weights
+
+# class SentimentAnalyzer(nn.Module):
+#     def __init__(self, embedding_dim, num_heads=4):
+#         super(SentimentAnalyzer, self).__init__()
+#
+#         # 定义多头自注意力层
+#         self.attention = nn.MultiheadAttention(embed_dim=embedding_dim, num_heads=num_heads)
+#
+#         # 定义一个线性层用于输出
+#         self.fc = nn.Linear(embedding_dim, 1)
+#
+#     def forward(self, context_embedding, gloss_embeddings):
+#         # context_embedding: (batch_size, embedding_dim)
+#         # gloss_embeddings: (num_glosses, embedding_dim)
+#
+#         # 为了与MultiheadAttention的输入格式匹配，将context_embedding和gloss_embeddings的维度转为 (seq_len, batch_size, embedding_dim)
+#
+#         context_embedding = context_embedding.unsqueeze(0)  # (1, batch_size, embedding_dim)
+#         gloss_embeddings = gloss_embeddings.unsqueeze(1)  # (num_glosses, 1, embedding_dim)
+#
+#         # 将维度转为 (seq_len, batch_size, embedding_dim) 适配多头注意力
+#         context_embedding = context_embedding.transpose(0,
+#                                                         1)  # (1, batch_size, embedding_dim) -> (seq_len=1, batch_size, embedding_dim)
+#         gloss_embeddings = gloss_embeddings.transpose(0,
+#                                                       1)  # (num_glosses, batch_size, embedding_dim) -> (seq_len=num_glosses, batch_size, embedding_dim)
+#
+#         # 进行多头注意力计算
+#         attn_output, attn_weights = self.attention(gloss_embeddings, context_embedding, context_embedding)
+#
+#         # 将输出通过全连接层转换为最终的得分
+#         scores = self.fc(attn_output)
+#
+#         return scores.squeeze(1)  # 移除多余的维度，返回 (num_glosses,) 形状的得分
+# 初始化模型
+# sentiment_analyzer = SentimentAnalyzer(embedding_dim=384,num_heads=16)
+
+
+# 计算情感得分
 def get_sentiment_score(word, sentiwordnet, model, context_embedding):
     if word in sentiwordnet:
         synsets = sentiwordnet[word]
         glosses = [synset["gloss"] for synset in synsets.values()]
+        synset_ids = list(synsets.keys())
 
-        # 生成 gloss 的嵌入
+        # 生成gloss的嵌入
         gloss_embeddings = model.encode(glosses, show_progress_bar=False)
+        gloss_embeddings_tensor = torch.tensor(gloss_embeddings, dtype=torch.float)
 
-        # 计算上下文与每个 gloss 的余弦相似度
-        similarities = cosine_similarity([context_embedding], gloss_embeddings)[0]
+        # 生成上下文嵌入
+        context_embedding_tensor = torch.tensor(context_embedding, dtype=torch.float).unsqueeze(0)
 
-        # 选择相似度最高的同义词集
-        best_synset_idx = np.argmax(similarities)
-        best_synset_num = list(synsets.keys())[best_synset_idx]
-        best_synset = synsets[best_synset_num]
+        # 计算注意力权重
+        weights = sentiment_analyzer(context_embedding_tensor, gloss_embeddings_tensor)
+        weights = weights.squeeze(1).detach().numpy()
 
-        return best_synset["pos_score"], best_synset["neg_score"], best_synset["obj_score"]
+        # 计算加权情感得分
+        pos_score, neg_score, obj_score = 0.0, 0.0, 0.0
+        for synset_num, synset in synsets.items():
+            pos_score += synset["pos_score"] * weights[synset_ids.index(synset_num)]
+            neg_score += synset["neg_score"] * weights[synset_ids.index(synset_num)]
+            obj_score += synset["obj_score"] * weights[synset_ids.index(synset_num)]
+
+        # 使用更高精度的得分
+        return pos_score, neg_score, obj_score
     else:
         return 0, 0, 1  # 如果词汇不在SentiWordNet中，则返回中性得分
+
+
+# def get_sentiment_score(word, sentiwordnet, model, context_embedding):
+#     if word in sentiwordnet:
+#         synsets = sentiwordnet[word]
+#         glosses = [synset["gloss"] for synset in synsets.values()]
+#
+#         # 生成 gloss 的嵌入
+#         gloss_embeddings = model.encode(glosses, show_progress_bar=False)
+#
+#         # 计算上下文与每个 gloss 的余弦相似度
+#         similarities = cosine_similarity([context_embedding], gloss_embeddings)[0]
+#
+#         # 选择相似度最高的同义词集
+#         best_synset_idx = np.argmax(similarities)
+#         best_synset_num = list(synsets.keys())[best_synset_idx]
+#         best_synset = synsets[best_synset_num]
+#
+#         return best_synset["pos_score"], best_synset["neg_score"], best_synset["obj_score"]
+#     else:
+#         return 0, 0, 1  # 如果词汇不在SentiWordNet中，则返回中性得分
 
 sentiwordnet = load_sentiwordnet('SentiWordNet_3.0.0_20130122.txt')
 def main():
