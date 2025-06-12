@@ -1,19 +1,5 @@
 # Aspect Sentiment Quad Prediction (ASQP) [Updated in August 2024]
 
-This repo contains the annotated data and code for our paper [Aspect Sentiment Quad Prediction as Paraphrase Generation](https://aclanthology.org/2021.emnlp-main.726.pdf) in EMNLP 2021.
-
-
-## Short Summary 
-- We aim to tackle the aspect sentiment quad prediction (ASQP) task: given a sentence, we predict all sentiment quads `(aspect category, aspect term, opinion term, sentiment polarity)`
-
-## Data
-- We release two new datasets, namely `rest15` and `rest16` under the `data` dir.
-- Each data instance contains the original sentence, as well as a list of sentiment quads, separated by `####`. 
-- The annotations are from the combination of the existing TASD data and ASTE data. We conduct further annotations to obtain the complete quad label for each sentence. 
-- You can also access the ABSA triplet data from the repo [Generative-ABSA](https://github.com/IsakZhang/Generative-ABSA).
-
-
-## Requirements [Updated in August 2024]
 
 We highly recommend you to install the specified version of the following packages to avoid unnecessary troubles:
 
@@ -32,23 +18,3 @@ Tested on CUDA Version: 12.2. Pytorch Lightning isn't needed anymore!
 - More details can be found in the paper and the help info in the `main.py`.
 
 
-## Citation
-
-If the code is used in your research, please star our repo and cite our paper as follows:
-```
-@inproceedings{zhang-etal-2021-aspect-sentiment,
-    title = "Aspect Sentiment Quad Prediction as Paraphrase Generation",
-    author = "Zhang, Wenxuan  and
-      Deng, Yang  and
-      Li, Xin  and
-      Yuan, Yifei  and
-      Bing, Lidong  and
-      Lam, Wai",
-    booktitle = "Proceedings of the 2021 Conference on Empirical Methods in Natural Language Processing",
-    month = nov,
-    year = "2021",
-    publisher = "Association for Computational Linguistics",
-    url = "https://aclanthology.org/2021.emnlp-main.726",
-    pages = "9209--9219",
-}
-```
